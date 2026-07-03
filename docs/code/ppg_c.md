@@ -70,13 +70,13 @@ wiringPiSPIDataRW(SPI_CH, tx, 3);
 
 MCP3204 single-ended CH0 read sequence입니다.
 
-\[
+```math
 ADC_{raw}=((byte_1 \& 0x0F)<<8) | byte_2
-\]
+```
 
-\[
+```math
 0 \le ADC_{raw} \le 4095
-\]
+```
 
 ## 6. ADC voltage conversion
 
@@ -84,9 +84,9 @@ ADC_{raw}=((byte_1 \& 0x0F)<<8) | byte_2
 return (float)v*(MCP_VREF/4095.0f);
 ```
 
-\[
+```math
 V_{in}=\frac{ADC_{raw}}{4095}V_{REF}
-\]
+```
 
 ## 7. HPF
 
@@ -94,9 +94,9 @@ V_{in}=\frac{ADC_{raw}}{4095}V_{REF}
 float y=h->alpha*(h->y_prev + x - h->x_prev);
 ```
 
-\[
+```math
 y[n]=\alpha(y[n-1]+x[n]-x[n-1])
-\]
+```
 
 - `alpha = 0.995`
 - DC offset 제거
@@ -108,9 +108,9 @@ y[n]=\alpha(y[n-1]+x[n]-x[n-1])
 float y=l->y_prev + l->beta*(x - l->y_prev);
 ```
 
-\[
+```
 y[n]=y[n-1]+\beta(x[n]-y[n-1])
-\]
+```
 
 - `beta = 0.075`
 - high-frequency noise 완화
@@ -137,9 +137,9 @@ env_amp = (xabs>env_amp)
 float thr = TH_K*env_amp;
 ```
 
-\[
+```math
 thr[n]=0.10\cdot A[n]
-\]
+```
 
 신호 세기가 변해도 고정 threshold가 아니라 signal amplitude에 따라 threshold가 따라가므로 사용자/착용상태 변화에 대응합니다.
 
@@ -159,9 +159,9 @@ thr[n]=0.10\cdot A[n]
 if ((last_peak_us==0)||(now-last_peak_us>REFRACTORY_US))
 ```
 
-\[
+```math
 REFRACTORY = 300000\mu s = 300ms
-\]
+```
 
 ```c
 unsigned long ibi_cur=(now-last_peak_us)/1000UL;
