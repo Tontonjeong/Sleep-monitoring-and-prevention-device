@@ -1,31 +1,32 @@
-# 📚 Documentation Index
+# Documentation Index
 
-이 문서 폴더는 포트폴리오 심사용으로 **구조도, 코드별 동작 원리, 신호처리 알고리즘, GPIO, 통신 프로토콜, 실행 절차**를 분리하여 정리한 것입니다.
+이 폴더는 PDF 보고서와 PPT 발표자료에 포함된 시스템 구조, 코드, 알고리즘, GPIO, 통신 프로토콜을 포트폴리오용 Markdown 문서로 재구성한 것입니다.
 
-## Core Documents
+## Architecture
 
-1. [System Overview](01_system_overview.md)
-2. [Hardware & GPIO Mapping](02_hardware_gpio.md)
-3. [PPG Signal Processing](03_ppg_signal_processing.md)
-4. [EAR Algorithm](04_ear_algorithm.md)
-5. [TCP/IP Protocol](05_tcp_ip_protocol.md)
-6. [Raspberry Pi 4 Setup](06_raspberry_pi4_setup.md)
-7. [Operation Sequence](07_operation_sequence.md)
-8. [Results & Limitations](08_results_and_limitations.md)
+![Full architecture](assets/diagrams/system_architecture_full.svg)
 
-## Code-by-Code Documents
+## 문서 목록
 
-- [ppg.c](code/ppg_c.md)
-- [server.c](code/server_c.md)
-- [client.c](code/client_c.md)
-- [run_ear.sh](code/run_ear_sh.md)
-- [ear.cpp](code/ear_cpp.md)
-- [legacy Python files](code/legacy_python.md)
+| 문서 | 설명 |
+|---|---|
+| [01_system_overview.md](01_system_overview.md) | 프로젝트 목적, 시스템 구성, 설계 의도 |
+| [02_hardware_gpio.md](02_hardware_gpio.md) | GPIO, SPI, I2C, USB, 입력/출력 조건 |
+| [03_ppg_signal_processing.md](03_ppg_signal_processing.md) | PPG analog-to-digital pipeline, HPF/LPF, peak detection |
+| [04_ear_algorithm.md](04_ear_algorithm.md) | EAR 공식, landmark, threshold, 졸음 판정 |
+| [05_tcp_ip_protocol.md](05_tcp_ip_protocol.md) | TCP server/client, packet, socket flow |
+| [06_raspberry_pi4_setup.md](06_raspberry_pi4_setup.md) | Raspberry Pi 4 build/run 환경 |
+| [07_operation_sequence.md](07_operation_sequence.md) | 실제 시연 순서와 START/STOP 상태 전이 |
+| [08_results_and_limitations.md](08_results_and_limitations.md) | 결과, 고찰, HRV 확장 방향 |
+| [09_infographics.md](09_infographics.md) | 모든 구조도/파이프라인/인포그래픽 모음 |
+| [10_formula_reference.md](10_formula_reference.md) | 코드와 연결되는 공식 전체 모음 |
+| [code/README.md](code/README.md) | 코드별 상세 분석 index |
 
-## Visual Assets
+## 코드 분석 문서
 
-- [System Architecture SVG](assets/diagrams/system_architecture.svg)
-- [PPG Pipeline SVG](assets/diagrams/ppg_pipeline.svg)
-- [EAR Formula SVG](assets/diagrams/ear_formula.svg)
-- [TCP/IP Sequence SVG](assets/diagrams/tcp_sequence.svg)
-- [GPIO Map SVG](assets/diagrams/gpio_map.svg)
+- [code/ppg_c.md](code/ppg_c.md)
+- [code/server_c.md](code/server_c.md)
+- [code/client_c.md](code/client_c.md)
+- [code/run_ear_sh.md](code/run_ear_sh.md)
+- [code/ear_cpp.md](code/ear_cpp.md)
+- [code/legacy_python.md](code/legacy_python.md)

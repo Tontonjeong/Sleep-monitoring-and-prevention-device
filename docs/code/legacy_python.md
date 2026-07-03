@@ -1,24 +1,27 @@
-# Code Deep Dive — `legacy/` Python Files
+# Legacy Uploaded Python Scripts
 
-## 1. 왜 `legacy/`로 분리했는가
+## 1. 왜 legacy인가
 
-업로드된 `송신부 코드.txt`, `수신부코드.txt`에는 MPU6050, 74HC595, socket, RPi.GPIO를 사용하는 Python 기반 에어마우스 코드가 들어 있었다. 이는 본 저장소의 최종 주제인 **PPG/EAR 기반 졸음 모니터링 C 시스템**과 직접 일치하지 않으므로, 포트폴리오 메인 구조에는 섞지 않고 `legacy/` 폴더에 원문 보존했다.
+업로드된 `송신부 코드.txt`, `수신부코드.txt`는 파일명과 달리 본 졸음 모니터링 C 코드가 아니라 MPU6050 기반 AirMouse Python script였습니다. 따라서 본 프로젝트 핵심 코드로 섞지 않고 `legacy/`에 별도 보존했습니다.
 
-## 2. 파일
+## 2. 기능 요약
 
-| 파일 | 내용 |
+| 파일 | 기능 |
 |---|---|
-| `legacy/airmouse_sender_provided.py` | MPU6050 자이로값, 버튼 상태, sensitivity를 TCP로 전송 |
-| `legacy/airmouse_receiver_provided.py` | 업로드된 수신부 텍스트 원문. 실제 내용은 송신부와 거의 동일한 구조 |
+| `legacy/airmouse_sender_provided.py` | MPU6050 gyro 값을 읽고 socket으로 전송, button 상태를 LEFT/RIGHT/SCROLL로 전송 |
+| `legacy/airmouse_receiver_provided.py` | 동일한 AirMouse 송신부 코드 변형 |
 
-## 3. 사용된 요소
+## 3. 포함 이유
 
-- TCP socket client
-- I2C MPU6050 register read
-- GPIO button input with pull-up
-- 74HC595 shift register driving
-- LED/Buzzer click feedback
+- 사용자가 제공한 모든 파일을 보존하기 위함
+- 포트폴리오 본문과 혼동되지 않도록 프로젝트 외부/legacy 자료로 분리
+- 실제 졸음 모니터링 core는 PDF/PPT의 `ppg.c`, `server.c`, `client.c`, `run_ear.sh` 기준으로 문서화
 
-## 4. 포트폴리오 정리 기준
+## 4. 본 프로젝트와 다른 점
 
-졸음 모니터링 프로젝트의 핵심 코드는 `src/`와 `scripts/`에 두고, 업로드된 Python 파일은 제출 자료 추적성과 재사용 가능성을 위해 별도 보존했다.
+| 항목 | AirMouse script | Drowsiness device |
+|---|---|---|
+| 센서 | MPU6050 gyro | PPG sensor + webcam |
+| 통신 | TCP client send | server/client status/BPM |
+| 출력 | 7-segment, buzzer, LED | LCD1602, LED, buzzer |
+| 알고리즘 | gyro movement command | PPG filtering + EAR drowsiness decision |

@@ -1,52 +1,58 @@
 # 01. System Overview
 
-![System Architecture](assets/diagrams/system_architecture.svg)
-
 ## 1. 설계 목적
 
-본 시스템은 사용자의 졸음 상태를 **생체신호(PPG/BPM)**와 **영상 지표(EAR)**로 동시에 관찰하고, 졸음으로 판단될 경우 **LED와 부저**로 즉시 각성 피드백을 주는 Raspberry Pi 4 기반 임베디드 시스템이다.
+본 프로젝트의 목적은 운전 또는 장시간 집중 작업 상황에서 발생 가능한 졸음 상태를 실시간으로 탐지하고, 졸음으로 판단되면 LED와 Active Buzzer를 통해 즉시 사용자에게 경고하는 웨어러블 임베디드 시스템을 구현하는 것입니다.
 
-프로젝트의 핵심 판단 전략은 다음과 같다.
+보고서에서는 졸음 판단을 **PPG 기반 BPM 산출**과 **영상 기반 EAR 분석**의 두 축으로 구성하되, 실제 졸음 판정의 주 지표는 EAR로 설정하고 BPM은 LCD 모니터링 보조 지표로 사용한다고 정리했습니다.
 
-- **BPM**: PPG 센서를 통해 심박수를 계산하되, 개인차와 졸음 시 변화 폭 문제 때문에 최종 경고 트리거보다는 모니터링 보조 지표로 사용한다.
-- **EAR**: 눈 개폐 상태를 직접 반영하므로 졸음 판정의 주지표로 사용한다.
-- **알람**: EAR이 임계치 아래로 일정 시간 유지되면 LED/Buzzer를 토글한다.
+## 2. 전체 시스템 구조
 
-## 2. 전체 데이터 흐름
+![Full architecture](assets/diagrams/system_architecture_full.svg)
 
 ```mermaid
 flowchart LR
-    A[PPG Sensor] --> B[Analog Front-End\nTIA / Filtering / Buffer]
-    B --> C[MCP3204\n12-bit ADC]
-    C --> D[Raspberry Pi 4 Server\nPPG/BPM + START/STOP]
-    D -->|TCP/IP CSV| E[Raspberry Pi 4 Client]
-    F[USB Webcam] --> G[OpenCV EAR Engine]
-    G -->|stdout CSV| H[run_ear.sh]
-    H -->|/tmp/ear_state.txt| E
-    E --> I[I2C LCD\nBPM + Status]
-    E --> J[GPIO LED]
-    E --> K[GPIO Active Buzzer]
+    PPG[PPG sensor] --> AFE[Analog front-end]
+    AFE --> ADC[MCP3204 ADC]
+    ADC --> SERVER[Raspberry Pi Server]
+    SERVER -->|TCP/IP: SN,BPM,status| CLIENT[Raspberry Pi Client]
+    CAM[USB webcam] --> EAR[OpenCV EAR engine]
+    EAR -->|stdout| SH[run_ear.sh]
+    SH -->|File IPC| STATE[/tmp/ear_state.txt]
+    STATE --> CLIENT
+    CLIENT --> LCD[LCD1602 I2C]
+    CLIENT --> LED[LED]
+    CLIENT --> BUZZER[Active Buzzer]
 ```
 
-## 3. 왜 2대의 Raspberry Pi로 분산했는가
+## 3. Node 역할 분리
 
-영상 처리(OpenCV 기반 EAR 분석)는 CPU 부하가 크고 프레임 처리 지연이 발생할 수 있다. 반면 PPG는 200 Hz 수준의 고정 샘플링이 중요하다. 따라서 단일 프로세스 구조로 묶으면 카메라 처리 때문에 ADC 샘플링이 흔들릴 수 있다.
-
-| 항목 | 단일 노드 구조 | 본 프로젝트 분산 구조 |
+| Node | 주요 기능 | 이유 |
 |---|---|---|
-| PPG 샘플링 | 영상 처리 부하와 충돌 가능 | Server가 200 Hz 샘플링 전담 |
-| EAR 처리 | 센서 루프와 경쟁 | Client가 OpenCV 분석 전담 |
-| START/STOP | polling 사용 시 CPU 낭비 | ISR 기반 즉시 상태 전환 |
-| 알람 | delay 기반이면 수신 중단 가능 | now_ms 타이머 기반 비차단 토글 |
-| 확장성 | 센서 추가 시 전체 구조 수정 | 모듈별 교체/확장 가능 |
+| Server Node A | PPG 샘플링, ADC 읽기, BPM 계산, START/STOP ISR, TCP 전송 | 200 Hz 샘플링 안정성 확보 |
+| Client Node B | EAR 분석, LCD 표시, LED/Buzzer 제어, 최종 판단 | OpenCV 영상 처리 부하 분리 |
 
-## 4. 구현 파일 매핑
+영상 처리를 하나의 라즈베리파이에 함께 올리면 ADC sampling과 BPM 계산이 지연될 수 있습니다. 본 설계는 이러한 병목을 줄이기 위해 하드웨어/연산 부하를 분산했습니다.
 
-| 기능 | 파일 |
-|---|---|
-| PPG 단독 측정/진단 | `src/ppg.c` |
-| Server node TCP 송신 | `src/server.c` |
-| Client node 통합 제어 | `src/client.c` |
-| EAR engine 실행/로그 필터링 | `scripts/run_ear.sh` |
-| OpenCV EAR engine | `src/ear.cpp` |
-| 핀/네트워크 설정 | `src/config.h` |
+## 4. 데이터 흐름
+
+1. PPG 센서가 혈액량 변화를 analog waveform으로 출력합니다.
+2. Analog front-end가 포토다이오드 전류를 전압화하고 ADC 입력 가능한 형태로 가공합니다.
+3. MCP3204가 PPG analog 신호를 12-bit digital sample로 변환합니다.
+4. Server Raspberry Pi가 SPI로 ADC 값을 읽고 BPM/status를 생성합니다.
+5. Server는 TCP/IP로 `SN-RPI-001,BPM,status` packet을 Client에 전송합니다.
+6. Client는 USB webcam 기반 EAR engine을 실행합니다.
+7. `run_ear.sh`는 EAR engine 출력을 파싱하여 `/tmp/ear_state.txt`에 저장합니다.
+8. `client.c`는 TCP packet과 EAR state file을 읽어 LCD/LED/Buzzer를 제어합니다.
+
+## 5. 왜 BPM은 보조 지표인가
+
+단순 BPM은 개인차가 크고 졸음 상태에서의 변화 폭이 완만하여 실시간 트리거로 쓰기 어렵습니다. 따라서 최종 구현은 **EAR을 주 트리거**, BPM은 LCD 시각화/생체 모니터링 보조 지표로 설계했습니다.
+
+## 6. 최종 출력
+
+| 출력 | 인터페이스 | 동작 |
+|---|---|---|
+| LCD1602 | I2C | BPM bar, BPM number, START/STOP 표시 |
+| LED | GPIO | 졸음 확정 시 점멸 |
+| Active Buzzer | GPIO | 졸음 확정 시 beep |

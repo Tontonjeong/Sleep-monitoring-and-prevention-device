@@ -1,23 +1,39 @@
 # Code Deep Dive — `src/ppg.c`
 
+![PPG pipeline](../assets/diagrams/ppg_full_pipeline.svg)
+
 ## 1. 역할
 
-`ppg.c`는 PPG 센서 신호를 MCP3204 ADC로 읽고, 디지털 필터링과 피크 검출을 통해 BPM을 계산하는 단독 진단/측정 코드이다.
+`ppg.c`는 PPG sensor의 analog signal을 MCP3204 ADC로 읽고, digital filter와 peak detector를 거쳐 BPM을 계산하는 코드입니다. 보고서 기준 기능은 다음과 같습니다.
 
-## 2. 주요 기능
+- GPIO START/STOP button 초기화
+- Falling-edge ISR 등록
+- MCP3204 CH0 SPI read
+- 200 Hz 고정 sampling
+- HPF + LPF filtering
+- adaptive threshold peak detection
+- IBI 계산
+- BPM 출력
+- rail/outlier sample skip
 
-| 기능 | 구현 |
-|---|---|
-| GPIO 초기화 | `wiringPiSetupGpio()` |
-| START/STOP 입력 | `wiringPiISR(..., INT_EDGE_FALLING, ...)` |
-| SPI ADC 읽기 | `wiringPiSPIDataRW(SPI_CH, tx, 3)` |
-| 샘플링 주기 | `nanosleep(5 ms)` = 200 Hz |
-| 필터 | HPF + LPF, optional biquad |
-| 피크 검출 | adaptive threshold + state machine |
-| BPM 변환 | `BPM = 60000 / IBI(ms)` |
-| 이상치 제거 | rail sample, big jump sample skip |
+## 2. 주요 상수
 
-## 3. 상태 머신
+| 상수 | 값 | 의미 |
+|---|---:|---|
+| `FS_HZ` | 200.0 | sampling frequency |
+| `SAMPLE_NS` | 5,000,000 ns | 5 ms sampling period |
+| `SPI_CH` | 0 | SPI CE0 |
+| `SPI_SPEED` | 1,000,000 | 1 MHz SPI speed |
+| `MCP_VREF` | 3.3 V | ADC reference voltage |
+| `GPIO_START` | 17 | START button |
+| `GPIO_STOP` | 27 | STOP button |
+| `g_debounce_ms` | 200 | button debounce |
+
+## 3. System State
+
+```c
+typedef enum { ST_IDLE=0, ST_RUN=1, ST_QUIT=2 } SystemState;
+```
 
 ```mermaid
 stateDiagram-v2
@@ -30,75 +46,168 @@ stateDiagram-v2
 
 ## 4. START/STOP ISR
 
-버튼은 pull-up으로 구성되어 있으므로 누르면 GPIO가 LOW가 된다. Falling edge interrupt를 사용하면 main loop에서 버튼 상태를 계속 polling하지 않아도 된다.
-
 ```c
-wiringPiISR(GPIO_START, INT_EDGE_FALLING, &start_isr);
-wiringPiISR(GPIO_STOP,  INT_EDGE_FALLING, &stop_isr);
+static void start_isr(void){
+    unsigned t=now_ms();
+    if (t-g_last_start_ms<g_debounce_ms) return;
+    g_last_start_ms=t;
+    if (g_state!=ST_QUIT && g_state!=ST_RUN){
+        g_state=ST_RUN;
+        g_running=1;
+    }
+}
 ```
 
-디바운싱은 200 ms 시간 비교로 처리한다.
+핵심은 polling 대신 hardware interrupt를 사용한다는 점입니다. 버튼 입력이 들어올 때만 ISR이 실행되므로 idle 상태 CPU 소모를 줄입니다.
 
-## 5. MCP3204 Read
+## 5. MCP3204 read
 
 ```c
-tx[0] = 0x06 | ((ch & 0x04) >> 2);
-tx[1] = (ch & 0x03) << 6;
-tx[2] = 0x00;
+unsigned char tx[3]={0x06,0x00,0x00};
 wiringPiSPIDataRW(SPI_CH, tx, 3);
-raw12 = ((tx[1] & 0x0F) << 8) | tx[2];
+*out12 = ((tx[1]&0x0F)<<8) | tx[2];
 ```
 
-MCP3204는 12-bit ADC이므로 raw 값은 `0~4095`이다.
+MCP3204 single-ended CH0 read sequence입니다.
 
-## 6. Filter Details
+\[
+ADC_{raw}=((byte_1 \& 0x0F)<<8) | byte_2
+\]
 
-### HPF
+\[
+0 \le ADC_{raw} \le 4095
+\]
 
-```text
-y[n] = α · (y[n-1] + x[n] - x[n-1])
+## 6. ADC voltage conversion
+
+```c
+return (float)v*(MCP_VREF/4095.0f);
 ```
 
-- `α = 0.995`
-- DC offset과 baseline wander 제거
+\[
+V_{in}=\frac{ADC_{raw}}{4095}V_{REF}
+\]
 
-### LPF
+## 7. HPF
 
-```text
-y[n] = y[n-1] + β · (x[n] - y[n-1])
+```c
+float y=h->alpha*(h->y_prev + x - h->x_prev);
 ```
 
-- `β = 0.075`
-- 고주파 노이즈 완화
+\[
+y[n]=\alpha(y[n-1]+x[n]-x[n-1])
+\]
 
-## 7. Peak Detection Logic
+- `alpha = 0.995`
+- DC offset 제거
+- slow baseline wander 제거
+
+## 8. LPF
+
+```c
+float y=l->y_prev + l->beta*(x - l->y_prev);
+```
+
+\[
+y[n]=y[n-1]+\beta(x[n]-y[n-1])
+\]
+
+- `beta = 0.075`
+- high-frequency noise 완화
+- PPG pulse shape 보존
+
+## 9. Biquad option
+
+`FILTER_MODE==1`이면 DF2T biquad filter를 사용합니다.
+
+```c
+float y = q->b0*x + q->s1;
+q->s1 = q->b1*x + q->s2 - q->a1*y;
+q->s2 = q->b2*x - q->a2*y;
+```
+
+이는 상태 변수 `s1`, `s2`를 사용하는 direct form II transposed 구조입니다.
+
+## 10. Adaptive envelope
+
+```c
+env_amp = (xabs>env_amp)
+    ? (ENV_ATTACK*xabs + (1-ENV_ATTACK)*env_amp)
+    : (ENV_DECAY*xabs + (1-ENV_DECAY)*env_amp);
+float thr = TH_K*env_amp;
+```
+
+\[
+thr[n]=0.10\cdot A[n]
+\]
+
+신호 세기가 변해도 고정 threshold가 아니라 signal amplitude에 따라 threshold가 따라가므로 사용자/착용상태 변화에 대응합니다.
+
+## 11. Peak detector state machine
+
+![Peak detector](../assets/diagrams/peak_detector_state_machine.svg)
+
+| 상태 | 코드 조건 | 의미 |
+|---|---|---|
+| `PK_IDLE` | `y<thr` and derivative upward | valley 이후 상승 대기 |
+| `PK_RISING` | `y>thr` and curvature changes | 정점 후보 접근 |
+| `PK_SMAXED` | slope positive→negative and refractory passed | peak 확정 |
+
+## 12. Refractory and IBI
+
+```c
+if ((last_peak_us==0)||(now-last_peak_us>REFRACTORY_US))
+```
+
+\[
+REFRACTORY = 300000\mu s = 300ms
+\]
+
+```c
+unsigned long ibi_cur=(now-last_peak_us)/1000UL;
+if (ibi_cur>=250 && ibi_cur<=2000) ibi_ms=(unsigned)ibi_cur;
+```
+
+\[
+250ms \le IBI \le 2000ms
+\]
+
+## 13. BPM
+
+```c
+float bpm=60000.0f/(float)ibi_ms;
+```
+
+\[
+BPM=\frac{60000}{IBI_{ms}}
+\]
+
+## 14. Outlier filter
+
+| 함수 | 조건 | 이유 |
+|---|---|---|
+| `is_rail(v)` | `v==0 || v==4095` | ADC saturation/접촉 불량 제거 |
+| `is_big_jump(a,b)` | `abs(a-b)>800` | 순간 spike 제거 |
+| `isfinite(y)` | false면 0 | NaN/Inf 방지 |
+| clipping | `-5.0~5.0` | filter state 폭주 방지 |
+
+## 15. 메인 루프 파이프라인
 
 ```mermaid
 flowchart TD
-    A[Filtered sample y] --> B[Update envelope amplitude]
-    B --> C[thr = TH_K * env_amp]
-    C --> D[Compute d1 and d2]
-    D --> E{State}
-    E -->|PK_IDLE| F[wait rising from valley]
-    E -->|PK_RISING| G[wait curvature condition]
-    E -->|PK_SMAXED| H[peak confirmation]
-    H --> I{refractory passed?}
-    I -->|yes| J[IBI calculation]
-    J --> K[BPM output]
+    A[wait ST_RUN] --> B[MCP3204 read]
+    B --> C{rail or big jump?}
+    C -->|yes| A
+    C -->|no| D[raw to voltage]
+    D --> E[HPF]
+    E --> F[LPF]
+    F --> G[peak_process]
+    G --> H{IBI valid?}
+    H -->|yes| I[BPM print/UART]
+    H -->|no| A
+    I --> A
 ```
 
-## 8. 안정화 설계
+## 16. 포트폴리오 해석 포인트
 
-- `is_rail()`로 0/4095 포화 값 제거
-- `is_big_jump()`로 순간 접촉 불량 제거
-- `isfinite()`로 NaN/Inf 방지
-- `±5.0` clipping으로 후단 상태 폭주 방지
-
-## 9. 실행
-
-```bash
-make ppg
-./ppg
-```
-
-START 버튼을 누르면 RUN 상태로 전환되고, STOP 버튼을 누르면 IDLE 상태로 돌아간다.
+이 코드는 단순히 ADC를 읽는 수준이 아니라, real-time sampling, signal conditioning, adaptive detection, robustness handling을 포함합니다. 따라서 임베디드 시스템 포트폴리오에서는 **센서 인터페이스 + 디지털 신호처리 + 실시간 상태제어**를 모두 보여주는 핵심 코드입니다.

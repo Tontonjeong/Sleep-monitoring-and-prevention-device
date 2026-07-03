@@ -1,57 +1,101 @@
-# 02. Hardware & GPIO Mapping
+# 02. Hardware, GPIO, SPI, I2C Pin Map
 
-![GPIO Map](assets/diagrams/gpio_map.svg)
+## 1. 제한사항 충족 구조
 
-## 1. 하드웨어 구성
+보고서에서는 라즈베리파이 간 TCP/IP 통신을 제한사항의 GPIO 입출력으로 계산하지 않고, 외부 센서/장치와의 하드웨어 입출력만으로 조건을 충족했다고 명시했습니다.
 
-| 구분 | 장치 | 인터페이스 | 역할 |
-|---|---|---|---|
-| 생체센서 | PPG analog circuit | Analog → MCP3204 | 혈류량 변화 기반 PPG 파형 생성 |
-| ADC | MCP3204 | SPI | 12-bit digital sample 변환 |
-| 입력 | START button | GPIO interrupt | 측정 시작 이벤트 |
-| 입력 | STOP button | GPIO interrupt | 측정 중지 이벤트 |
-| 영상 | USB webcam | USB/V4L2 | 얼굴/눈 영상 입력 |
-| 표시 | LCD1602 I2C | I2C | BPM 및 START/STOP 표시 |
-| 경고 | LED | GPIO output | 시각 경고 |
-| 경고 | Active buzzer | GPIO output | 청각 경고 |
+![GPIO map](assets/diagrams/gpio_pinmap_full.svg)
 
-## 2. GPIO 입력 조건 충족
+## 2. 입력 장치
 
-프로젝트 보고서 기준으로 제한사항 충족은 다음처럼 정리된다.
+| 입력 | 연결 | 설명 |
+|---|---|---|
+| START button | GPIO interrupt input | Falling edge ISR로 측정 시작 이벤트 발생 |
+| STOP button | GPIO interrupt input | Falling edge ISR로 측정 중지 이벤트 발생 |
+| PPG sensor | Analog → MCP3204 → SPI | PPG analog waveform을 12-bit digital sample로 변환 |
+| USB webcam | USB | EAR 분석용 영상 입력. GPIO 제한사항 집계에는 제외 |
 
-| Pin 입력 | 장치 | 장치 개수 | 조건 |
-|---|---|---:|---|
-| GPIO Input | PPG sensor(MCP3204 연결), START button, STOP button | 3 | 충족 |
-| GPIO Output | I2C LCD, LED, Active Buzzer | 3 | 충족 |
-| HDMI/USB | HDMI display, keyboard, mouse, webcam | 4 | 별도, GPIO 집계 제외 |
+## 3. 출력 장치
 
-## 3. Raspberry Pi 4 기준 핀 매핑
+| 출력 | 연결 | 설명 |
+|---|---|---|
+| LED | GPIO output | 졸음 확정 시 시각 경고 |
+| Active Buzzer | GPIO output | 졸음 확정 시 청각 경고 |
+| LCD1602 I2C | I2C SDA/SCL | BPM 및 START/STOP 상태 표시 |
 
-`wiringPiSetupGpio()`를 사용하므로 코드의 숫자는 **BCM GPIO 번호**이다.
+## 4. 실제 코드 기준 핀
 
-| 기능 | BCM GPIO | 코드 매크로 | 설명 |
-|---|---:|---|---|
-| START button | 17 | `GPIO_START` | Pull-up 입력, falling edge ISR |
-| STOP button | 27 | `GPIO_STOP` | Pull-up 입력, falling edge ISR |
-| MCP3204 CE0 | 8 | SPI0 CE0 | `SPI_CH=0` |
-| MCP3204 MISO | 9 | SPI0 MISO | ADC DOUT |
-| MCP3204 MOSI | 10 | SPI0 MOSI | ADC DIN |
-| MCP3204 SCLK | 11 | SPI0 SCLK | ADC CLK |
-| LCD SDA | 2 | I2C SDA | LCD1602 I2C backpack |
-| LCD SCL | 3 | I2C SCL | LCD1602 I2C backpack |
-| LED | 18 | `LED_PIN` | 졸음 경고 출력 |
-| Active buzzer | 23 | `BUZZER_PIN` | 졸음 경고 출력 |
+### 4.1 `ppg.c`
 
-> ⚠️ 보고서의 `server.c` 원문 일부에는 `START_BUTTON=22`로 들어간 버전이 존재한다. 실제 최종 배선이 GPIO17이면 `src/config.h` 기본값을 그대로 사용하고, GPIO22 배선이면 `GPIO_START`만 22로 변경하면 된다.
+| 항목 | 코드 상수 | 의미 |
+|---|---|---|
+| START | `GPIO_START 17` | START ISR |
+| STOP | `GPIO_STOP 27` | STOP ISR |
+| SPI CE | `SPI_CH 0` | MCP3204 CE0 |
+| SPI speed | `SPI_SPEED 1000000` | 1 MHz |
+| UART | `/dev/serial0` | 선택적 BPM UART 출력 |
 
-## 4. GPIO란 무엇인가
+### 4.2 `server.c`
 
-GPIO는 General Purpose Input/Output의 약자로, 소프트웨어가 핀을 입력 또는 출력으로 설정하여 외부 회로 상태를 읽거나 장치를 제어할 수 있는 범용 디지털 핀이다. 본 프로젝트에서는 단순 ON/OFF 제어뿐 아니라 SPI/I2C 같은 주변장치 통신도 GPIO의 alternate function을 통해 사용한다.
+| 항목 | 코드 상수 | 의미 |
+|---|---|---|
+| START | `START_BUTTON 22` | TCP server의 running_status=1 |
+| STOP | `STOP_BUTTON 27` | TCP server의 running_status=0 |
+| SPI | `SPI_CH 0` | ADC channel 0 read |
+| PORT | `5000` | TCP server port |
 
-## 5. 통신 핀별 전기적 주의사항
+### 4.3 `client.c`
 
-- Raspberry Pi GPIO 입력은 3.3 V logic 기준이다. 5 V를 직접 입력하면 손상 위험이 있다.
-- LED는 전류 제한 저항을 반드시 사용한다.
-- Active buzzer가 GPIO 허용 전류를 넘는 경우 트랜지스터 드라이버를 추가한다.
-- I2C LCD는 5 V LCD backpack 사용 시 SDA/SCL pull-up 전압을 반드시 확인한다.
-- SPI 배선은 GND 공통 기준이 필요하다.
+| 항목 | 코드 상수 | 의미 |
+|---|---|---|
+| LED | `LED_PIN 18` | 시각 알람 |
+| BUZZER | `BUZZER_PIN 23` | 청각 알람 |
+| LCD | `LCD_I2C_ADDR 0x27` | LCD1602 I2C expander address |
+| EAR state | `/tmp/ear_state.txt` | run_ear.sh가 갱신하는 IPC 파일 |
+
+## 5. GPIO 인터럽트 원리
+
+버튼은 pull-up으로 구성됩니다. 평상시 HIGH이고 버튼을 누르면 LOW로 떨어지므로 `INT_EDGE_FALLING`을 사용합니다.
+
+```c
+pinMode(GPIO_START, INPUT);
+pullUpDnControl(GPIO_START, PUD_UP);
+wiringPiISR(GPIO_START, INT_EDGE_FALLING, &start_isr);
+```
+
+### 디바운스 공식
+
+\[
+\Delta t = t_{current} - t_{last}
+\]
+
+\[
+\Delta t < 200ms \Rightarrow ignore
+\]
+
+버튼 접점 떨림으로 인한 중복 이벤트를 막기 위해 200 ms 미만의 연속 입력은 무시합니다.
+
+## 6. SPI 통신
+
+MCP3204는 SPI 기반 12-bit ADC입니다. Raspberry Pi는 CE/MISO/MOSI/SCLK 핀을 통해 ADC 값을 읽습니다.
+
+```mermaid
+sequenceDiagram
+    participant R as Raspberry Pi SPI Master
+    participant A as MCP3204 ADC
+    R->>A: command byte: start + single-ended + channel
+    A-->>R: null/upper bits
+    A-->>R: lower 8 bits
+    R->>R: raw12 = ((tx[1]&0x0F)<<8) | tx[2]
+```
+
+## 7. I2C LCD 동작
+
+`client.c`는 `wiringPiI2CSetup(0x27)`로 LCD I2C expander에 연결하고, 4-bit mode로 LCD command/data를 보냅니다.
+
+LCD 표시 구조:
+
+```text
+line 1: ################   ← BPM bar
+line 2: BPM: 82 START      ← BPM + state
+```

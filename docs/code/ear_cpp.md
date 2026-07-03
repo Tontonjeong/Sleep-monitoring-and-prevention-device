@@ -2,68 +2,67 @@
 
 ## 1. 역할
 
-`ear.cpp`는 `run_ear.sh`가 실행하는 OpenCV 기반 영상 분석 엔진이다. 보고서와 발표자료에는 `./ear lbfmodel.yaml ... /dev/video0 0.22 3.0 1` 형태의 실행 인터페이스와 EAR 판정 구조가 제시되어 있었고, 본 저장소에는 해당 인터페이스로 빌드 가능한 구현을 정리했다.
+`ear.cpp`는 보고서/PPT의 EAR engine 구조를 기준으로 재구성한 OpenCV reference implementation입니다. 실제 프로젝트 문서에서는 `run_ear.sh`가 `./ear` executable을 실행하고, 그 출력 line을 파싱하여 `/tmp/ear_state.txt`로 전달합니다.
 
-## 2. 입력 인자
+## 2. EAR engine expected output
 
-```bash
-./ear <lbfmodel.yaml> <haarcascade.xml> <video_device> <ear_thr> <closed_sec> <show>
+`run_ear.sh`는 다음 CSV format만 유효 데이터로 인정합니다.
+
+```text
+timestamp_ms,ear,eye_closed,closed_ms,drowsy
 ```
 
-| 인자 | 예시 | 의미 |
-|---|---|---|
-| LBF model | `lbfmodel.yaml` | OpenCV Facemark LBF landmark model |
-| Cascade | `haarcascade_frontalface_default.xml` | Face detector |
-| Camera | `/dev/video0` | USB webcam |
-| EAR threshold | `0.22` | 눈 감김 판단 임계값 |
-| Closed seconds | `3.0` | engine 내부 drowsy 지속시간 |
-| Show | `1` | OpenCV 화면 표시 |
+example:
 
-## 3. 알고리즘
+```text
+2365780,0.2778,0,0,0
+2367800,0.1800,1,2020,1
+```
+
+## 3. Algorithm pipeline
+
+![EAR pipeline](../assets/diagrams/ear_full_pipeline.svg)
 
 ```mermaid
 flowchart TD
-    A[Read camera frame] --> B[Grayscale + equalizeHist]
-    B --> C[Haar face detection]
-    C --> D[Facemark LBF landmark fit]
-    D --> E[Left/Right eye EAR]
-    E --> F[Average EAR]
-    F --> G{EAR < threshold?}
-    G -->|yes| H[closed_ms accumulate]
-    G -->|no| I[closed_start reset]
-    H --> J{closed_ms >= closed_sec?}
+    A[VideoCapture /dev/video0] --> B[frame read]
+    B --> C[grayscale or LAB preprocessing]
+    C --> D[face detection]
+    D --> E[eye landmark extraction]
+    E --> F[EAR formula]
+    F --> G{EAR < 0.22?}
+    G -->|yes| H[accumulate closed_ms]
+    G -->|no| I[reset closed_ms]
+    H --> J{closed_ms >= 2000?}
     J -->|yes| K[drowsy=1]
     J -->|no| L[drowsy=0]
+    I --> L
     K --> M[stdout CSV]
     L --> M
-    I --> M
 ```
 
-## 4. EAR 계산
+## 4. EAR formula
 
-```cpp
-double left = eye_aspect_ratio(landmarks[0], 36);
-double right = eye_aspect_ratio(landmarks[0], 42);
-ear = (left + right) / 2.0;
-```
+\[
+EAR=\frac{\lVert p_2-p_6\rVert+\lVert p_3-p_5\rVert}{2\lVert p_1-p_4\rVert}
+\]
 
-68-point landmark 기준:
+## 5. Distance function
 
-- Left eye: 36~41
-- Right eye: 42~47
+\[
+\lVert a-b\rVert=\sqrt{(a_x-b_x)^2+(a_y-b_y)^2}
+\]
 
-## 5. stdout 설계
+## 6. Decision
 
-`run_ear.sh`가 쉽게 필터링할 수 있도록 한 줄마다 CSV로 출력한다.
+\[
+Drowsy=(EAR<0.22)\land(closed\_ms\ge2000)
+\]
 
-```text
-[ear] timestamp_ms,ear,eye_closed,closed_ms,drowsy
-```
+## 7. 왜 stdout CSV인가
 
-## 6. 빌드
+C client가 OpenCV C++ code와 직접 link되지 않아도 됩니다. `run_ear.sh`가 stdout을 정제하여 file IPC로 바꿔 주므로, 두 모듈의 coupling이 낮아집니다.
 
-```bash
-make ear
-```
+## 8. 포트폴리오 해석 포인트
 
-OpenCV contrib의 `face` module이 필요하다.
+이 구조는 임베디드 시스템에서 흔히 사용하는 **process separation + simple text protocol + watchdog-style parsing** 설계입니다. 무거운 vision engine이 실패하거나 log를 많이 출력해도 main controller는 `/tmp/ear_state.txt`의 최신 상태만 읽으면 됩니다.

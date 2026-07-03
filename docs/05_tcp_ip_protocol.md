@@ -1,70 +1,82 @@
-# 05. TCP/IP Protocol
+# 05. TCP/IP Protocol and Packet Flow
 
-![TCP Sequence](assets/diagrams/tcp_sequence.svg)
+![TCP sequence](assets/diagrams/tcp_sequence_full.svg)
 
-## 1. 사용 이유
+## 1. 통신 목적
 
-두 Raspberry Pi 사이에는 하드웨어 배선을 직접 연결하지 않고 TCP/IP 네트워크를 사용한다. 이렇게 하면 Server Node와 Client Node를 물리적으로 분리할 수 있고, 영상 분석 부하와 PPG 샘플링 부하를 분산할 수 있다.
+두 Raspberry Pi 사이에는 하드웨어 배선 대신 네트워크 기반 TCP/IP 통신을 사용합니다. Server Node는 BPM과 START/STOP 상태를 Client Node로 전달합니다.
 
-## 2. Socket Flow
+## 2. Socket server flow
 
-Server:
+`server.c`의 TCP server는 다음 순서로 동작합니다.
 
-```text
-socket() → bind(0.0.0.0:5000) → listen() → accept() → write()
+```mermaid
+flowchart TD
+    A[socket] --> B[setsockopt SO_REUSEADDR]
+    B --> C[bind port 5000]
+    C --> D[listen]
+    D --> E[accept]
+    E --> F[build CSV packet]
+    F --> G[write to client]
+    G --> H[delay 1000 ms]
+    H --> F
 ```
 
-Client:
-
-```text
-socket() → connect(SERVER_IP:5000) → read() → parse CSV
-```
-
-## 3. Packet Format
-
-Server에서 Client로 1초 간격으로 전송한다.
-
-```text
-serial_num,bpm,status
-```
-
-예시:
+## 3. Packet structure
 
 ```text
 SN-RPI-001,82,1
-SN-RPI-001,0,0
+│          │  └── running_status: 1=RUN/START, 0=STOP/IDLE
+│          └───── BPM value
+└──────────────── serial number
 ```
 
-| Field | Type | Meaning |
-|---|---|---|
-| `serial_num` | string | 장치 식별자 |
-| `bpm` | int | 측정된 BPM. STOP 상태면 0 |
-| `status` | int | 1=START/RUN, 0=STOP/IDLE |
+생성 코드:
 
-## 4. Client State Transition
-
-```mermaid
-stateDiagram-v2
-    [*] --> STOP
-    STOP --> START: status 0→1 / start_ear_process()
-    START --> STOP: status 1→0 / stop_ear_process(), alarm_off()
-    START --> DROWSY: EAR < 0.22 for 2 sec
-    DROWSY --> START: EAR recovered
-    DROWSY --> STOP: STOP event
+```c
+sprintf(message, "%s,%d,%d", serial_num, bpm_to_send, running_status);
 ```
 
-## 5. Blocking Risk and Mitigation
+Client parsing code:
 
-- TCP `read()` 자체는 blocking이지만, Server가 1초마다 계속 packet을 보내므로 Client loop가 주기적으로 갱신된다.
-- 알람은 `delay()`를 길게 쓰지 않고 `now_ms()` 비교로 토글하므로 수신 루프가 멈추지 않는다.
-- EAR 엔진은 별도 프로세스로 구동하고 `/tmp/ear_state.txt`만 읽으므로 OpenCV 처리 시간이 메인 제어를 직접 막지 않는다.
-
-## 6. 네트워크 설정 체크리스트
-
-```bash
-hostname -I
-ping <server-ip>
-nc -vz <server-ip> 5000
+```c
+sscanf(message, "%31[^,],%d,%d", sn, &bpm, &status);
 ```
 
-`src/config.h`의 `SERVER_IP`를 Client가 실제 Server Node IP로 접속하도록 수정해야 한다.
+## 4. 상태 의미
+
+| status | 의미 | Client action |
+|---:|---|---|
+| 0 | STOP/IDLE | EAR process stop, alarm off, LCD STOP |
+| 1 | START/RUN | EAR process start, BPM display, drowsiness decision |
+
+## 5. START/STOP edge detection
+
+Client는 현재 status와 직전 `last_status`를 비교하여 edge를 감지합니다.
+
+| 조건 | 이벤트 |
+|---|---|
+| `status==1 && last_status==0` | START edge, `run_ear.sh` 실행 |
+| `status==0 && last_status==1` | STOP edge, EAR process 종료 및 alarm off |
+
+## 6. 전송 주기
+
+`server.c`는 1초 간격으로 packet을 push합니다.
+
+\[
+T_{tx}=1000ms
+\]
+
+이 구조는 네트워크 부하를 낮추고 LCD BPM 표시에는 충분한 주기입니다. PPG sampling은 200 Hz로 빠르게 수행되지만, 네트워크 packet은 가공된 BPM/status만 전송합니다.
+
+## 7. 통신 실패 처리
+
+| 상황 | 처리 |
+|---|---|
+| `write(...) <= 0` | loop break, socket close |
+| `read(...) <= 0` | client loop break, process stop, alarm off |
+| `connect(...) == -1` | client 종료 |
+
+## 8. 왜 TCP인가
+
+TCP는 packet 순서 보장과 연결 지향 세션을 제공하므로, START/STOP 이벤트와 BPM 상태처럼 순서가 중요한 제어 정보 전달에 적합합니다. UDP보다 구현이 단순하고, 시연 환경에서 데이터 손실 가능성을 줄일 수 있습니다.

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="560" viewBox="0 0 1250 560">
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#263238"/></marker><style>.b{fill:white;stroke:#263238;stroke-width:2;rx:16}.t{font:700 19px Arial;fill:#111}.s{font:500 14px Arial;fill:#333}.p{stroke:#263238;stroke-width:3;marker-end:url(#a);fill:none}.eq{font:600 14px Arial;fill:#0d47a1}</style></defs>
+  <rect x="20" y="20" width="1210" height="520" rx="25" fill="#f7fbff" stroke="#cfd8dc"/>
+  <text x="52" y="62" class="t">PPG Signal Processing Pipeline — from ADC Sample to BPM</text>
+  <g transform="translate(50,105)"><rect class="b" width="160" height="95"/><text x="22" y="35" class="t">PPG Sensor</text><text x="20" y="62" class="s">혈류량 변화</text><text x="20" y="82" class="s">analog waveform</text></g>
+  <g transform="translate(255,105)"><rect class="b" width="170" height="95"/><text x="25" y="35" class="t">AFE</text><text x="20" y="62" class="s">TIA + DC offset</text><text x="20" y="82" class="s">active filtering</text></g>
+  <g transform="translate(475,105)"><rect class="b" width="170" height="95"/><text x="30" y="35" class="t">MCP3204</text><text x="20" y="62" class="s">12-bit ADC CH0</text><text x="20" y="82" class="eq">V = raw·Vref/4095</text></g>
+  <g transform="translate(705,105)"><rect class="b" width="180" height="95"/><text x="25" y="35" class="t">Digital BPF</text><text x="20" y="62" class="s">HPF α=0.995</text><text x="20" y="82" class="s">LPF β=0.075</text></g>
+  <g transform="translate(945,105)"><rect class="b" width="210" height="95"/><text x="25" y="35" class="t">Peak Detector</text><text x="20" y="62" class="s">adaptive threshold</text><text x="20" y="82" class="s">300 ms refractory</text></g>
+  <path d="M210 152 H255" class="p"/><path d="M425 152 H475" class="p"/><path d="M645 152 H705" class="p"/><path d="M885 152 H945" class="p"/>
+  <path d="M1050 200 V250" class="p"/>
+  <g transform="translate(840,265)"><rect class="b" width="315" height="90"/><text x="24" y="34" class="t">IBI Measurement</text><text x="24" y="60" class="s">IBI_ms = t_peak[n] - t_peak[n-1]</text><text x="24" y="80" class="s">valid range: 250~2000 ms</text></g>
+  <path d="M840 310 H770" class="p"/>
+  <g transform="translate(510,265)"><rect class="b" width="260" height="90"/><text x="25" y="35" class="t">BPM Calculation</text><text x="25" y="64" class="eq">BPM = 60000 / IBI_ms</text></g>
+  <path d="M510 310 H450" class="p"/>
+  <g transform="translate(225,265)"><rect class="b" width="225" height="90"/><text x="28" y="34" class="t">Output</text><text x="20" y="60" class="s">stdout / UART / TCP payload</text><text x="20" y="80" class="s">LCD monitoring value</text></g>
+  <g transform="translate(75,410)"><rect x="0" y="0" width="1080" height="80" rx="18" fill="#e3f2fd" stroke="#1565c0"/><text x="30" y="32" class="s">Noise protection: rail sample 0/4095 skip, big-jump &gt;800 skip, NaN/Inf clipping, ±5.0 limiter</text><text x="30" y="58" class="s">Real-time design: Fs=200 Hz, SAMPLE_NS=5 ms, ISR-based START/STOP instead of polling</text></g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520">
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#333"/></marker><style>.t{font:700 20px Arial;fill:#111}.s{font:500 15px Arial;fill:#333}.p{stroke:#333;stroke-width:2.5;marker-end:url(#a);fill:none}.line{stroke:#78909c;stroke-width:2}.box{fill:#fff;stroke:#263238;stroke-width:2;rx:14}</style></defs>
+  <rect x="20" y="20" width="1080" height="480" rx="24" fill="#fbfbff" stroke="#cfd8dc"/>
+  <text x="50" y="62" class="t">TCP/IP Communication Sequence</text>
+  <text x="170" y="105" class="t">Server Raspberry Pi</text><text x="735" y="105" class="t">Client Raspberry Pi</text>
+  <line x1="260" y1="125" x2="260" y2="465" class="line"/><line x1="835" y1="125" x2="835" y2="465" class="line"/>
+  <rect x="125" y="140" width="270" height="45" class="box"/><text x="152" y="168" class="s">socket(PF_INET, SOCK_STREAM)</text>
+  <rect x="125" y="205" width="270" height="45" class="box"/><text x="152" y="233" class="s">bind(INADDR_ANY:5000)</text>
+  <rect x="125" y="270" width="270" height="45" class="box"/><text x="152" y="298" class="s">listen(serv_sock, 5)</text>
+  <rect x="700" y="270" width="270" height="45" class="box"/><text x="718" y="298" class="s">connect(SERVER_IP, 5000)</text>
+  <path d="M700 292 H395" class="p"/><text x="500" y="278" class="s">SYN / connection request</text>
+  <rect x="125" y="335" width="270" height="45" class="box"/><text x="152" y="363" class="s">accept(...)</text>
+  <path d="M395 357 H700" class="p"/><text x="510" y="345" class="s">connection accepted</text>
+  <rect x="125" y="410" width="270" height="45" class="box"/><text x="147" y="438" class="s">write: SN-RPI-001,BPM,status</text>
+  <path d="M395 432 H700" class="p"/><text x="525" y="420" class="s">1 s packet push</text>
+  <rect x="700" y="410" width="270" height="45" class="box"/><text x="722" y="438" class="s">read + sscanf + decision</text>
+</svg>

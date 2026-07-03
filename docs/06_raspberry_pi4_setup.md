@@ -1,91 +1,104 @@
-# 06. Raspberry Pi 4 Setup
+# 06. Raspberry Pi 4 Setup and Run Guide
 
-## 1. Hardware Assumption
+## 1. Enable interfaces
 
-- Raspberry Pi 4 Model B
-- Raspberry Pi OS
-- SPI enabled
-- I2C enabled
-- USB webcam 연결
-- MCP3204 ADC 연결
-- LCD1602 I2C backpack 연결
-- LED + Active buzzer 출력 회로 연결
+```bash
+sudo raspi-config
+```
 
-## 2. Basic Setup
+활성화:
+
+- SPI: MCP3204 ADC
+- I2C: LCD1602
+- Camera/USB webcam: `/dev/video0`
+
+## 2. Install packages
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential git pkg-config i2c-tools libopencv-dev opencv-data
-sudo raspi-config nonint do_spi 0
-sudo raspi-config nonint do_i2c 0
-sudo reboot
+sudo apt install -y build-essential git i2c-tools libi2c-dev
+sudo apt install -y libopencv-dev
 ```
 
-## 3. Build
+`wiringPi`는 OS 버전에 따라 별도 설치가 필요할 수 있습니다.
 
-```bash
-git clone https://github.com/Tontonjeong/Sleep-monitoring-and-prevention-device.git
-cd Sleep-monitoring-and-prevention-device
-make
-chmod +x scripts/run_ear.sh
-```
-
-## 4. SPI Check
-
-```bash
-ls /dev/spidev*
-```
-
-Expected:
-
-```text
-/dev/spidev0.0  /dev/spidev0.1
-```
-
-## 5. I2C Check
+## 3. Check I2C LCD
 
 ```bash
 i2cdetect -y 1
 ```
 
-LCD1602 backpack 주소가 일반적으로 `0x27` 또는 `0x3f`로 표시된다. 다르면 `src/config.h`의 `LCD_I2C_ADDR`를 수정한다.
+보통 LCD backpack 주소는 `0x27` 또는 `0x3f`입니다. 본 코드 기본값은 `0x27`입니다.
 
-## 6. Camera Check
-
-```bash
-ls /dev/video*
-v4l2-ctl --list-devices
-```
-
-`run_ear.sh`는 기본적으로 `/dev/video0`을 사용한다.
-
-## 7. Execution
-
-Server Node:
+## 4. Check SPI
 
 ```bash
-./server
+ls /dev/spidev*
 ```
 
-Client Node:
+예상:
+
+```text
+/dev/spidev0.0
+/dev/spidev0.1
+```
+
+## 5. Build
 
 ```bash
-./client
+make clean
+make
 ```
 
-EAR engine standalone test:
+## 6. Run server
+
+Server Raspberry Pi:
 
 ```bash
-./ear lbfmodel.yaml /usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml /dev/video0 0.22 3.0 1
+sudo ./build/server
 ```
 
-## 8. Common Problems
+또는 PPG 단독 진단:
 
-| 증상 | 원인 후보 | 해결 |
-|---|---|---|
-| `/dev/spidev0.0` 없음 | SPI 비활성 | `raspi-config`에서 SPI enable |
-| LCD 표시 안 됨 | I2C 주소 다름 | `i2cdetect -y 1`로 주소 확인 |
-| START 눌러도 반응 없음 | GPIO 번호/풀업/배선 오류 | BCM 번호 확인, GND 연결 확인 |
-| 카메라 창 안 뜸 | DISPLAY/XAUTHORITY 문제 | `echo $DISPLAY`, X11 session 확인 |
-| EAR 값 -1 지속 | 얼굴 미검출/조도 문제 | 조도 확보, 카메라 각도 조정 |
-| LED 항상 켜짐/꺼짐 | active-low 배선 | `LED_ACTIVE_LOW` 변경 |
+```bash
+sudo ./build/ppg
+```
+
+## 7. Run client
+
+Client Raspberry Pi에서 server IP를 수정합니다.
+
+```c
+#define SERVER_IP "172.31.95.226"
+```
+
+실행:
+
+```bash
+sudo ./build/client
+```
+
+## 8. Run EAR script manually
+
+```bash
+bash scripts/run_ear.sh
+cat /tmp/ear_state.txt
+```
+
+정상 state format:
+
+```text
+0.2778 0
+0.1800 1
+```
+
+## 9. Debug checklist
+
+| 증상 | 확인 |
+|---|---|
+| LCD 안 켜짐 | I2C address, VCC/GND, SDA/SCL |
+| ADC 값 고정 | SPI enable, CE0 wiring, MCP3204 VREF |
+| START 안 됨 | pull-up, falling edge, GPIO BCM 번호 |
+| EAR 창 안 뜸 | DISPLAY, XAUTHORITY, `/dev/video0` 권한 |
+| 알람 안 울림 | LED active-low 여부, buzzer polarity |
+| client 접속 실패 | SERVER_IP, port 5000, same network |

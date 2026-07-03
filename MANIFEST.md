@@ -1,7 +1,9 @@
-# File Manifest
+# Enhanced Portfolio Package Manifest
 
 - `.github/workflows/markdown-check.yml`
 - `.gitignore`
+- `APPLY_TO_LOCAL_REPO.ps1`
+- `MANIFEST.md`
 - `Makefile`
 - `README.md`
 - `_config.yml`
@@ -13,18 +15,43 @@
 - `docs/06_raspberry_pi4_setup.md`
 - `docs/07_operation_sequence.md`
 - `docs/08_results_and_limitations.md`
+- `docs/09_infographics.md`
+- `docs/10_formula_reference.md`
 - `docs/README.md`
 - `docs/assets/diagrams/ear_formula.svg`
+- `docs/assets/diagrams/ear_full_pipeline.svg`
 - `docs/assets/diagrams/gpio_map.svg`
+- `docs/assets/diagrams/gpio_pinmap_full.svg`
+- `docs/assets/diagrams/peak_detector_state_machine.svg`
+- `docs/assets/diagrams/ppg_full_pipeline.svg`
 - `docs/assets/diagrams/ppg_pipeline.svg`
 - `docs/assets/diagrams/system_architecture.svg`
+- `docs/assets/diagrams/system_architecture_full.svg`
 - `docs/assets/diagrams/tcp_sequence.svg`
+- `docs/assets/diagrams/tcp_sequence_full.svg`
 - `docs/assets/images/circuit_board.svg`
 - `docs/assets/images/client_code_screenshot.svg`
 - `docs/assets/images/demo_session.svg`
 - `docs/assets/images/system_lcd_rpi.svg`
 - `docs/assets/images/wearable_front.svg`
 - `docs/assets/images/wearable_side.svg`
+- `docs/assets/photos/20251220_023656.jpg`
+- `docs/assets/photos/20251220_023659.jpg`
+- `docs/assets/photos/20251220_063405.jpg`
+- `docs/assets/photos/20251220_063421.jpg`
+- `docs/assets/photos/20251220_063426.jpg`
+- `docs/assets/photos/KakaoTalk_20251220_055315578.png`
+- `docs/assets/photos/KakaoTalk_20251220_055452200.png`
+- `docs/assets/photos/KakaoTalk_20251220_055524340.png`
+- `docs/assets/photos/KakaoTalk_20251220_055628035.png`
+- `docs/assets/photos/KakaoTalk_20251220_055651899.png`
+- `docs/assets/photos/KakaoTalk_20251220_055718269.png`
+- `docs/assets/photos/KakaoTalk_20251220_055748615.png`
+- `docs/assets/photos/KakaoTalk_20251220_055808045.png`
+- `docs/assets/photos/KakaoTalk_20251220_055838320.png`
+- `docs/assets/photos/KakaoTalk_20251220_185920430.jpg`
+- `docs/assets/photos/contact_sheet.jpg`
+- `docs/code/README.md`
 - `docs/code/client_c.md`
 - `docs/code/ear_cpp.md`
 - `docs/code/legacy_python.md`

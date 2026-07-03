@@ -2,64 +2,92 @@
 
 ## 1. 역할
 
-`run_ear.sh`는 OpenCV EAR engine인 `./ear`를 실행하고, stdout 로그 중에서 유효한 CSV 데이터만 필터링하여 `/tmp/ear_state.txt`에 최신 EAR 상태를 저장한다.
+`run_ear.sh`는 OpenCV 기반 EAR engine(`./ear`)을 실행하고, stdout/stderr에서 유효한 CSV data line만 추출하여 `/tmp/ear_state.txt`에 최신 EAR/drowsy 값을 저장하는 shell wrapper입니다.
 
-## 2. 실행 구조
+## 2. Overall pipeline
 
 ```mermaid
-flowchart LR
-    A[./ear] -->|stdout/stderr| B[run_ear.sh]
-    B --> C{Regex match?}
-    C -->|yes| D[parse ts, ear, eye_closed, closed_ms, drowsy]
-    C -->|no| E[ignore debug log]
-    D --> F[if EAR < 0 then drowsy=0]
-    F --> G[/tmp/ear_state.txt]
+flowchart TD
+    A[cd /home/dong] --> B[remove old state/log]
+    B --> C[export DISPLAY and XAUTHORITY]
+    C --> D[write initial state 0.0000 0]
+    D --> E[run ./ear with stdbuf]
+    E --> F[read line]
+    F --> G[append log]
+    G --> H[remove [ear] prefix]
+    H --> I{regex CSV valid?}
+    I -->|no| F
+    I -->|yes| J[parse ts,ear,eye_closed,closed_ms,drowsy]
+    J --> K{ear < 0?}
+    K -->|yes| L[drowsy=0]
+    K -->|no| M[keep drowsy]
+    L --> N[write state file]
+    M --> N
+    N --> F
 ```
 
-## 3. 환경 변수
+## 3. State file
 
 ```bash
-export DISPLAY="${DISPLAY:-:0}"
-export XAUTHORITY="${XAUTHORITY:-/home/dong/.Xauthority}"
+STATE=/tmp/ear_state.txt
+printf "%.4f %d\n" 0.0000 0 > "$STATE"
 ```
 
-HDMI display에 OpenCV 창을 띄우기 위한 설정이다.
+`client.c`는 이 파일만 읽으면 되므로 OpenCV engine의 상세 log format에 직접 의존하지 않습니다.
 
-## 4. Regex Filter
+## 4. EAR engine command
 
 ```bash
-^[0-9]+,[-+]?[0-9]*\.?[0-9]+,[01],[0-9]+,[01]$
+stdbuf -oL -eL ./ear lbfmodel.yaml \
+  /usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml \
+  /dev/video0 0.22 3.0 1 2>&1
 ```
 
-허용되는 형식:
+| argument | 의미 |
+|---|---|
+| `lbfmodel.yaml` | landmark model |
+| `haarcascade_frontalface_default.xml` | face detector |
+| `/dev/video0` | webcam device |
+| `0.22` | EAR threshold |
+| `3.0` | duration/window parameter from engine |
+| `1` | show video window flag |
+| `2>&1` | stderr를 stdout으로 합침 |
 
-```text
-timestamp,ear,eye_closed,closed_ms,drowsy
+## 5. Why `stdbuf`?
+
+`stdbuf -oL -eL`은 stdout/stderr를 line-buffered로 만들어 shell script가 frame/result line을 지연 없이 읽도록 합니다.
+
+## 6. Regex filtering
+
+```bash
+if ! [[ "$line" =~ ^[0-9]+,[-+]?[0-9]*\.?[0-9]+,[01],[0-9]+,[01]$ ]]; then
+  continue
+fi
 ```
 
-예:
+valid CSV example:
 
 ```text
 2365780,0.2778,0,0,0
 ```
 
-## 5. IPC File Format
+| field | 의미 |
+|---|---|
+| `2365780` | timestamp |
+| `0.2778` | EAR |
+| `0` | eye_closed flag |
+| `0` | closed duration ms |
+| `0` | drowsy flag |
 
-`client.c`가 읽는 최종 파일은 단순하다.
+## 7. Prefix removal
 
-```text
-ear drowsy
+```bash
+line="${line#\[ear\] }"
 ```
 
-예:
+engine이 `[ear] ` prefix를 붙여도 동일하게 CSV parsing을 수행할 수 있습니다.
 
-```text
-0.1842 1
-```
-
-## 6. 오동작 방지
-
-얼굴 미검출 등으로 EAR이 음수가 되면 drowsy를 강제로 0으로 만든다.
+## 8. Face-not-detected fail-safe
 
 ```bash
 if awk -v ear="$ear" 'BEGIN{exit !(ear < 0)}'; then
@@ -67,12 +95,20 @@ if awk -v ear="$ear" 'BEGIN{exit !(ear < 0)}'; then
 fi
 ```
 
-## 7. 실행
+EAR이 음수라는 것은 얼굴/눈 검출 실패 등 비정상 상태로 볼 수 있으므로 졸음 flag를 강제로 0으로 만듭니다. 이는 false alarm을 줄이기 위한 방어 로직입니다.
 
-`client.c`가 START packet을 받으면 자동으로 실행한다. 수동 테스트는 다음과 같다.
+## 9. IPC output
 
 ```bash
-chmod +x scripts/run_ear.sh
-./scripts/run_ear.sh
-cat /tmp/ear_state.txt
+printf "%.4f %d\n" "$ear" "$drowsy" > "$STATE"
 ```
+
+최종적으로 client는 이 파일에서 두 값만 읽습니다.
+
+```text
+EAR DROWSY
+```
+
+## 10. 포트폴리오 해석 포인트
+
+이 shell script는 단순 실행 파일이 아니라, OpenCV engine과 C main application 사이를 느슨하게 연결하는 **IPC adapter**입니다. 덕분에 영상 engine 로그 형식이 복잡해도 client code는 간단하게 유지됩니다.
