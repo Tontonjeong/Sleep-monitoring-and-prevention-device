@@ -43,21 +43,21 @@ flowchart TD
 
 ## 4. EAR formula
 
-\[
-EAR=\frac{\lVert p_2-p_6\rVert+\lVert p_3-p_5\rVert}{2\lVert p_1-p_4\rVert}
-\]
+```math
+EAR = \frac{\lVert p_2-p_6\rVert+\lVert p_3-p_5\rVert}{2\lVert p_1-p_4\rVert}
+```
 
 ## 5. Distance function
 
-\[
-\lVert a-b\rVert=\sqrt{(a_x-b_x)^2+(a_y-b_y)^2}
-\]
+```math
+\lVert a-b\rVert = \sqrt{(a_x-b_x)^2+(a_y-b_y)^2}
+```
 
 ## 6. Decision
 
-\[
-Drowsy=(EAR<0.22)\land(closed\_ms\ge2000)
-\]
+```math
+Drowsy = (EAR < 0.22)\land(closed\_ms \ge 2000)
+```
 
 ## 7. 왜 stdout CSV인가
 
