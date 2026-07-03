@@ -86,13 +86,13 @@ lcd_write4((value << 4) & 0xF0, mode);
 
 ### LCD bar formula
 
-\[
+```math
 norm=\frac{BPM-50}{120-50}
-\]
+```
 
-\[
+```math
 bars=round(norm\cdot16)
-\]
+```
 
 코드:
 
