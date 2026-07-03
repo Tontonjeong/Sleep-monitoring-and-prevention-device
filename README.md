@@ -1,138 +1,90 @@
-# Sleep Monitoring and Prevention Device
+# Real-Time Drowsiness Monitoring & Alert Device
 
-Raspberry Pi 4 based real-time drowsiness monitoring and prevention device.
+Raspberry Pi 4 기반 실시간 졸음 모니터링 및 경고 웨어러블 프로젝트입니다.
 
-## Overview
+## 개요
 
-This project uses two Raspberry Pi 4 boards in a distributed architecture.
+이 프로젝트는 두 대의 Raspberry Pi 4를 사용하여 생체신호와 영상 기반 졸음 지표를 분산 처리합니다.
 
-- Server node: PPG sensing, MCP3204 ADC sampling, START/STOP button interrupts, TCP data transmission
-- Client node: USB webcam EAR analysis, 1602 I2C LCD display, LED and active buzzer alarm
-- Network: TCP/IP socket, default port `5000`
-- Drowsiness decision: EAR is the primary trigger. BPM is displayed on the LCD as an auxiliary monitoring value.
+- Server Node: PPG analog circuit, MCP3204 ADC, START/STOP interrupt, TCP transmission
+- Client Node: USB webcam, EAR analysis, I2C LCD, LED, active buzzer
+- Signal Processing: PPG filtering, peak detection, IBI, BPM calculation
+- Vision: Eye Aspect Ratio threshold and closed-eye duration check
+- Network: TCP/IP socket, default port 5000
 
 ## Architecture
 
 ```text
-PPG Sensor -> Analog Circuit -> MCP3204 ADC -> Raspberry Pi Server
-                                                    |
-                                                    | TCP/IP: SN,BPM,status
-                                                    v
+PPG Sensor -> Analog Front-End -> MCP3204 ADC -> Raspberry Pi Server
+                                                     |
+                                                     | TCP/IP
+                                                     v
 USB Webcam -> EAR Engine -> /tmp/ear_state.txt -> Raspberry Pi Client
-                                                    |
-                                                    v
-                                      I2C LCD + LED + Active Buzzer
+                                                     |
+                                                     +-- I2C LCD
+                                                     +-- LED / Active Buzzer
 ```
 
-## Repository Structure
+## Core Logic
+
+### PPG to BPM
 
 ```text
-.
-├── README.md
-├── Makefile
-├── src/
-│   ├── server.c
-│   ├── client.c
-│   └── ppg.c
-├── scripts/
-│   ├── run_ear.sh
-│   └── test_gpio.sh
-└── docs/
-    ├── hardware.md
-    ├── software.md
-    └── demo_sequence.md
+ADC sample -> HPF -> LPF -> adaptive peak detection -> IBI -> BPM
+BPM = 60000 / IBI_ms
 ```
 
-## Hardware Summary
+### EAR Decision
 
-### Server Node
+```text
+EAR = ( ||p2-p6|| + ||p3-p5|| ) / ( 2 ||p1-p4|| )
+```
 
-| Function | Interface | Default BCM GPIO |
-|---|---:|---:|
-| START button | GPIO interrupt input | 22 |
-| STOP button | GPIO interrupt input | 27 |
-| MCP3204 ADC | SPI0 CE0 | 8 |
-| PPG output | MCP3204 CH0 | ADC CH0 |
+When EAR is below 0.22 for about 2 seconds, the client triggers visual and audio feedback.
 
-### Client Node
+## Portfolio Package
 
-| Function | Interface | Default BCM GPIO / Address |
-|---|---:|---:|
-| USB webcam | USB | `/dev/video0` |
-| 1602 LCD | I2C | `0x27` |
-| LED | GPIO output | 24 |
-| Active buzzer | GPIO output | 23 |
+The complete portfolio package prepared from the report, presentation, source-text files, and photos includes:
 
-All GPIO numbers are BCM numbers.
+```text
+src/ppg.c
+src/server.c
+src/client.c
+src/ear.cpp
+src/config.h
+scripts/run_ear.sh
+scripts/setup_rpi4.sh
+docs/*.md
+docs/code/*.md
+docs/assets/diagrams/*.svg
+docs/assets/images/*.svg
+legacy/*.py
+index.md
+_config.yml
+```
+
+The uploaded `송신부 코드.txt` and `수신부코드.txt` files were MPU6050 AirMouse Python scripts, so they are preserved separately under `legacy/` in the prepared package.
 
 ## Build
 
 ```bash
-sudo apt update
-sudo apt install -y build-essential i2c-tools wiringpi
 make
 ```
-
-Enable SPI and I2C with `sudo raspi-config` before running.
 
 ## Run
 
 Server Raspberry Pi:
 
 ```bash
-./build/server
+sudo ./build/server
 ```
 
 Client Raspberry Pi:
 
 ```bash
-./build/client
+sudo ./build/client
 ```
 
-The client starts `scripts/run_ear.sh` when it receives `status=1` from the server.
+## Note
 
-## EAR State File
-
-`run_ear.sh` writes the latest EAR state to:
-
-```text
-/tmp/ear_state.txt
-```
-
-Format:
-
-```text
-<ear_value> <drowsy_flag>
-```
-
-Example:
-
-```text
-0.1871 1
-```
-
-## Decision Logic
-
-```text
-EAR < 0.22 for about 2 seconds -> DROWSY
-DROWSY -> LED blink + buzzer beep + LCD mark '!'
-STOP -> kill EAR process + alarm off + LCD returns to STOP state
-```
-
-## GPIO Test
-
-```bash
-chmod +x scripts/test_gpio.sh
-./scripts/test_gpio.sh
-```
-
-Manual test:
-
-```bash
-pinctrl set 24 op dh
-sleep 1
-pinctrl set 24 op dl
-pinctrl set 23 op dh
-sleep 1
-pinctrl set 23 op dl
-```
+For real hardware, confirm `src/config.h` before execution: server IP, GPIO BCM numbers, LCD I2C address, camera device, and OpenCV model paths must match the actual Raspberry Pi 4 setup.
