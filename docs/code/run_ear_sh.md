@@ -8,20 +8,20 @@
 
 ```mermaid
 flowchart TD
-    A[cd /home/dong] --> B[remove old state/log]
-    B --> C[export DISPLAY and XAUTHORITY]
-    C --> D[write initial state 0.0000 0]
-    D --> E[run ./ear with stdbuf]
-    E --> F[read line]
-    F --> G[append log]
-    G --> H[remove [ear] prefix]
-    H --> I{regex CSV valid?}
+    A["cd /home/dong"] --> B["remove old state/log"]
+    B --> C["export DISPLAY and XAUTHORITY"]
+    C --> D["write initial state: 0.0000 0"]
+    D --> E["run ./ear with stdbuf"]
+    E --> F["read line"]
+    F --> G["append log"]
+    G --> H["remove [ear] prefix"]
+    H --> I{"regex CSV valid?"}
     I -->|no| F
-    I -->|yes| J[parse ts,ear,eye_closed,closed_ms,drowsy]
-    J --> K{ear < 0?}
-    K -->|yes| L[drowsy=0]
-    K -->|no| M[keep drowsy]
-    L --> N[write state file]
+    I -->|yes| J["parse ts, ear, eye_closed, closed_ms, drowsy"]
+    J --> K{"ear less than 0?"}
+    K -->|yes| L["force drowsy = 0"]
+    K -->|no| M["keep drowsy flag"]
+    L --> N["write state file"]
     M --> N
     N --> F
 ```
