@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+<defs><style>.t{font-family:Arial,'Noto Sans KR',sans-serif}.h{font-size:28px;font-weight:700;fill:#0f172a}.m{font-size:20px;fill:#334155}.s{font-size:16px;fill:#475569}.box{fill:#f8fafc;stroke:#6366f1;stroke-width:3;rx:20}.line{stroke:#334155;stroke-width:3;fill:none;marker-end:url(#a)}</style><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect x="25" y="25" width="1150" height="470" rx="32" fill="#fff" stroke="#e2e8f0" stroke-width="2"/><text x="60" y="75" class="t h">PPG → BPM 신호처리 파이프라인</text>
+<g><rect x="70" y="140" width="180" height="100" class="box"/><text x="100" y="180" class="t m">PPG Sensor</text><text x="95" y="212" class="t s">LED + photodiode</text></g>
+<path d="M255 190 L325 190" class="line"/>
+<g><rect x="330" y="140" width="190" height="100" class="box"/><text x="360" y="180" class="t m">Analog Front-End</text><text x="355" y="212" class="t s">TIA / HPF / LPF / buffer</text></g>
+<path d="M525 190 L595 190" class="line"/>
+<g><rect x="600" y="140" width="170" height="100" class="box"/><text x="635" y="180" class="t m">MCP3204</text><text x="632" y="212" class="t s">12-bit SPI ADC</text></g>
+<path d="M775 190 L845 190" class="line"/>
+<g><rect x="850" y="140" width="270" height="100" class="box"/><text x="880" y="180" class="t m">Digital Processing</text><text x="880" y="212" class="t s">HPF+LPF → adaptive peak → IBI</text></g>
+<path d="M160 305 C260 260 360 350 460 305 S660 260 760 305 S960 350 1060 305" stroke="#0ea5e9" stroke-width="5" fill="none"/>
+<line x1="360" y1="280" x2="360" y2="380" stroke="#ef4444" stroke-width="3"/><line x1="660" y1="280" x2="660" y2="380" stroke="#ef4444" stroke-width="3"/>
+<line x1="360" y1="370" x2="660" y2="370" stroke="#ef4444" stroke-width="3" marker-end="url(#a)"/><text x="462" y="360" class="t m">IBI(ms)</text>
+<text x="400" y="445" class="t h">BPM = 60000 / IBI(ms)</text>
+</svg>

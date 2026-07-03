@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+<defs><style>.t{font-family:Arial,'Noto Sans KR',sans-serif}.h{font-size:28px;font-weight:700;fill:#0f172a}.m{font-size:20px;fill:#334155}.s{font-size:16px;fill:#475569}.box{fill:#f8fafc;stroke:#0ea5e9;stroke-width:3;rx:22}.box2{fill:#fefce8;stroke:#f59e0b;stroke-width:3;rx:22}.box3{fill:#f0fdf4;stroke:#22c55e;stroke-width:3;rx:22}.line{stroke:#334155;stroke-width:3;fill:none;marker-end:url(#a)}.dash{stroke-dasharray:8 8}</style><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect x="25" y="25" width="1150" height="570" rx="32" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="60" y="75" class="t h">실시간 졸음 모니터링 및 방지 디바이스 - 전체 구조</text>
+<rect x="70" y="130" width="430" height="330" class="box"/>
+<text x="105" y="175" class="t h">Node A: Sensing / Server</text>
+<text x="105" y="220" class="t m">PPG analog circuit</text><text x="105" y="255" class="t s">TIA + DC offset removal + active filtering</text>
+<text x="105" y="310" class="t m">MCP3204 ADC</text><text x="105" y="345" class="t s">12-bit ADC, SPI CE/MISO/MOSI/SCLK</text>
+<text x="105" y="400" class="t m">START / STOP ISR</text><text x="105" y="435" class="t s">Falling edge interrupt, RUN/IDLE state</text>
+<rect x="710" y="130" width="430" height="330" class="box3"/>
+<text x="745" y="175" class="t h">Node B: Analysis / Client</text>
+<text x="745" y="220" class="t m">USB webcam + EAR engine</text><text x="745" y="255" class="t s">Face/eye landmarks, EAR threshold</text>
+<text x="745" y="310" class="t m">Decision + HMI</text><text x="745" y="345" class="t s">LCD BPM display, LED/Buzzer alarm</text>
+<text x="745" y="400" class="t m">Non-blocking alarm</text><text x="745" y="435" class="t s">Timer-based toggle; no blocking delay loop</text>
+<path d="M510 245 C585 245 620 245 695 245" class="line"/><text x="535" y="230" class="t m">TCP/IP CSV</text><text x="535" y="277" class="t s">SN,BPM,status / port 5000</text>
+<rect x="380" y="505" width="440" height="50" class="box2"/><text x="418" y="538" class="t m">Drowsy 확정: EAR &lt; 0.22가 약 2초 이상 지속 → LED + Buzzer</text>
+</svg>

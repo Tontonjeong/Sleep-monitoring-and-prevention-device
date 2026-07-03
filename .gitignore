@@ -1,0 +1,8 @@
+ppg
+server
+client
+ear
+*.o
+/tmp/
+.DS_Store
+__pycache__/

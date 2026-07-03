@@ -1,25 +1,24 @@
 CC=gcc
-CFLAGS=-O2 -Wall -Wextra
-LDFLAGS=-lwiringPi -lm
+CXX=g++
+CFLAGS=-O2 -Wall -Wextra -std=c11 -I./src
+CXXFLAGS=-O2 -Wall -Wextra -std=c++17
+LDLIBS=-lwiringPi -lm
+OPENCV_LIBS=$(shell pkg-config --cflags --libs opencv4 2>/dev/null)
 
-BUILD_DIR=build
-SRC_DIR=src
+all: ppg server client ear
 
-all: $(BUILD_DIR)/server $(BUILD_DIR)/client $(BUILD_DIR)/ppg
+ppg: src/ppg.c src/config.h
+	$(CC) $(CFLAGS) -o ppg src/ppg.c $(LDLIBS)
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+server: src/server.c src/config.h
+	$(CC) $(CFLAGS) -o server src/server.c $(LDLIBS)
 
-$(BUILD_DIR)/server: $(SRC_DIR)/server.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+client: src/client.c src/config.h
+	$(CC) $(CFLAGS) -o client src/client.c $(LDLIBS)
 
-$(BUILD_DIR)/client: $(SRC_DIR)/client.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
-
-$(BUILD_DIR)/ppg: $(SRC_DIR)/ppg.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+ear: src/ear.cpp
+	$(CXX) $(CXXFLAGS) -o ear src/ear.cpp $(OPENCV_LIBS)
 
 clean:
-	rm -rf $(BUILD_DIR)
-
+	rm -f ppg server client ear
 .PHONY: all clean

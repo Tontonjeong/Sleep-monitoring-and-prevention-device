@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+<defs><style>.t{font-family:Arial,'Noto Sans KR',sans-serif}.h{font-size:28px;font-weight:700;fill:#0f172a}.m{font-size:19px;fill:#334155}.s{font-size:16px;fill:#475569}.line{stroke:#334155;stroke-width:3;marker-end:url(#a)}.dash{stroke-dasharray:7 7}</style><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect x="25" y="25" width="1150" height="510" rx="32" fill="#fff" stroke="#e2e8f0" stroke-width="2"/><text x="60" y="75" class="t h">TCP/IP 통신 과정 - Server.c ↔ Client.c</text>
+<line x1="300" y1="130" x2="300" y2="485" stroke="#94a3b8" stroke-width="3"/><line x1="900" y1="130" x2="900" y2="485" stroke="#94a3b8" stroke-width="3"/>
+<text x="220" y="120" class="t h">Server</text><text x="825" y="120" class="t h">Client</text>
+<text x="120" y="170" class="t m">socket()</text><text x="120" y="215" class="t m">bind(:5000)</text><text x="120" y="260" class="t m">listen()</text><path d="M890 295 L315 295" class="line"/><text x="575" y="285" class="t m">connect()</text><path d="M310 335 L885 335" class="line"/><text x="565" y="325" class="t m">accept()</text><path d="M310 400 L885 400" class="line"/><text x="440" y="390" class="t m">write: SN-RPI-001,BPM,status</text><text x="410" y="438" class="t s">예: SN-RPI-001,82,1</text><path d="M890 470 L315 470" class="line dash"/><text x="520" y="462" class="t m">read loop / status parsing</text>
+</svg>

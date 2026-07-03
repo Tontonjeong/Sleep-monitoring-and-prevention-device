@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<defs><style>.t{font-family:Arial,'Noto Sans KR',sans-serif}.h{font-size:28px;font-weight:700;fill:#0f172a}.m{font-size:20px;fill:#334155}.s{font-size:16px;fill:#475569}.box{fill:#f8fafc;stroke:#0ea5e9;stroke-width:2;rx:16}.pin{fill:#e0f2fe;stroke:#0284c7;stroke-width:2;rx:10}</style></defs>
+<rect x="25" y="25" width="1150" height="550" rx="32" fill="#fff" stroke="#e2e8f0" stroke-width="2"/><text x="60" y="75" class="t h">Raspberry Pi 4 GPIO / Peripheral Mapping</text>
+<rect x="80" y="120" width="500" height="380" class="box"/><text x="120" y="160" class="t h">Server Node</text>
+<rect x="125" y="200" width="380" height="44" class="pin"/><text x="145" y="229" class="t m">GPIO17 - START 버튼, Falling-edge ISR</text>
+<rect x="125" y="255" width="380" height="44" class="pin"/><text x="145" y="284" class="t m">GPIO27 - STOP 버튼, Falling-edge ISR</text>
+<rect x="125" y="310" width="380" height="44" class="pin"/><text x="145" y="339" class="t m">SPI0: CE0/MISO/MOSI/SCLK - MCP3204</text>
+<rect x="125" y="365" width="380" height="44" class="pin"/><text x="145" y="394" class="t m">PPG analog input → ADC CH0</text>
+<rect x="620" y="120" width="500" height="380" class="box"/><text x="660" y="160" class="t h">Client Node</text>
+<rect x="665" y="200" width="380" height="44" class="pin"/><text x="685" y="229" class="t m">GPIO18 - LED alarm</text>
+<rect x="665" y="255" width="380" height="44" class="pin"/><text x="685" y="284" class="t m">GPIO23 - Active buzzer</text>
+<rect x="665" y="310" width="380" height="44" class="pin"/><text x="685" y="339" class="t m">I2C: GPIO2 SDA / GPIO3 SCL - LCD1602</text>
+<rect x="665" y="365" width="380" height="44" class="pin"/><text x="685" y="394" class="t m">USB webcam - EAR video input</text>
+<text x="100" y="545" class="t s">주의: 보고서의 일부 server.c 스크린샷은 START=GPIO22로 표기되어 있으므로 실제 배선 기준으로 config.h에서 조정한다.</text>
+</svg>
