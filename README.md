@@ -41,43 +41,43 @@ flowchart LR
 
 ### 3.1 ADC 변환
 
-\[
+```math
 V_{in}[n] = \frac{ADC_{raw}[n]}{4095} V_{REF}
-\]
+```
 
 MCP3204는 12-bit ADC이므로 raw range는 0~4095입니다.
 
 ### 3.2 1차 HPF
 
-\[
+```math
 y_{HPF}[n] = \alpha \left(y_{HPF}[n-1] + x[n] - x[n-1]\right), \quad \alpha=0.995
-\]
+```
 
 DC offset, baseline wander, 호흡성 저주파 흔들림을 줄입니다.
 
 ### 3.3 1차 LPF
 
-\[
+```math
 y_{LPF}[n] = y_{LPF}[n-1] + \beta \left(x[n] - y_{LPF}[n-1]\right), \quad \beta=0.075
-\]
+```
 
 전원 잡음, 동잡음, 고주파 성분을 완화합니다.
 
 ### 3.4 BPM 계산
 
-\[
+```math
 IBI_{ms}=t_{peak,k}-t_{peak,k-1}
-\]
+```
 
-\[
+```math
 BPM = \frac{60000}{IBI_{ms}}
-\]
+```
 
 ### 3.5 EAR 계산
 
-\[
+```math
 EAR = \frac{\lVert p_2-p_6\rVert + \lVert p_3-p_5\rVert}{2\lVert p_1-p_4\rVert}
-\]
+```
 
 눈을 감으면 세로 거리 항이 감소하므로 EAR 값이 낮아집니다. 구현 기준은 `EAR < 0.22` 상태가 2000 ms 이상 지속되는 경우입니다.
 
