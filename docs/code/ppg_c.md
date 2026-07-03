@@ -168,9 +168,9 @@ unsigned long ibi_cur=(now-last_peak_us)/1000UL;
 if (ibi_cur>=250 && ibi_cur<=2000) ibi_ms=(unsigned)ibi_cur;
 ```
 
-\[
+```math
 250ms \le IBI \le 2000ms
-\]
+```
 
 ## 13. BPM
 
@@ -178,9 +178,9 @@ if (ibi_cur>=250 && ibi_cur<=2000) ibi_ms=(unsigned)ibi_cur;
 float bpm=60000.0f/(float)ibi_ms;
 ```
 
-\[
+```math
 BPM=\frac{60000}{IBI_{ms}}
-\]
+```
 
 ## 14. Outlier filter
 
